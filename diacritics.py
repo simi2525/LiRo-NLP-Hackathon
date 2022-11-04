@@ -77,7 +77,7 @@ if __name__ == "__main__":
 
     dataset = dataset.rename_column("text", "labels")
 
-    column_names = dataset["train"].column_names
+        column_names = dataset["train"].column_names
 
     dataset.set_transform(preprocess_function)
 
