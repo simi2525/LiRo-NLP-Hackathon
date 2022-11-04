@@ -1,12 +1,16 @@
-from datasets import load_dataset
+import os.path
+
+from datasets import load_dataset, load_from_disk
 from transformers import BertGenerationEncoder, BertGenerationDecoder, EncoderDecoderModel, BertTokenizer, \
     DataCollatorWithPadding, DataCollatorForSeq2Seq, Seq2SeqTrainer, AutoConfig, AutoModelForSeq2SeqLM, \
     Seq2SeqTrainingArguments
 
+DATA_PATH = "data/cache/dataset_1.hf"
+SAMPLES_ONLY = False
+
 tokenizer = BertTokenizer.from_pretrained("readerbench/RoBERT-small")
 tokenizer.bos_token = tokenizer.cls_token
 tokenizer.eos_token = tokenizer.sep_token
-# tokenizer.add_tokens(" < sep>")
 text_column = "input"
 summary_column = "labels"
 
@@ -28,12 +32,6 @@ def preprocess_function(examples):
         # labels = tokenizer(targets, max_length=max_target_length, padding=padding, truncation=True)
         labels = tokenizer(targets, truncation=True)
 
-    # If we are padding here, replace all tokenizer.pad_token_id in the labels by -100 when we want to ignore
-    # padding in the loss.
-    # if padding == "max_length" and data_args.ignore_pad_token_for_loss:
-    #     labels["input_ids"] = [
-    #         [(l if l != tokenizer.pad_token_id else -100) for l in label] for label in labels["input_ids"]
-    #     ]
 
     model_inputs["labels"] = labels["input_ids"]
     return model_inputs
@@ -43,8 +41,6 @@ def tokenize_function(example):
     tokenized_input = tokenizer(example["input"], truncation=True)
     targets = example["text"]
     labels = tokenizer(targets, truncation=True)
-    # tokenized_output = tokenizer(example["text"], truncation=True)
-    # tokenized_output = {"text_"+key : value for key,value in tokenized_output.items()}
     tokenized_input["labels"] = labels["input_ids"]
     return tokenized_input
     # return {**tokenized_input}
@@ -64,36 +60,40 @@ def add_no_diac_input(example):
 
 
 if __name__ == "__main__":
-    dataset = load_dataset("dumitrescustefan/diacritic")
-    # dataset = dataset.select(list(range(100)))
-    dataset["train"] = dataset["train"].select(list(range(100)))
-    dataset["validation"] = dataset["validation"].select(list(range(100)))
-    dataset = dataset.map(add_no_diac_input)
+    if not os.path.exists(DATA_PATH):
+        dataset = load_dataset("dumitrescustefan/diacritic")
+        if SAMPLES_ONLY:
+            dataset["train"] = dataset["train"].select(list(range(100)))
+            dataset["validation"] = dataset["validation"].select(list(range(100)))
+        dataset = dataset.map(add_no_diac_input)
 
-    dataset = dataset.rename_column("text", "labels")
-    # dataset = dataset.map(_add_special_tokens)
+        dataset = dataset.rename_column("text", "labels")
 
-    print(dataset["train"][0])
+        print(dataset["train"][0])
+        print(dataset["validation"][0])
 
-    column_names = dataset["train"].column_names
+        column_names = dataset["train"].column_names
 
-    train_dataset = dataset["train"].map(
-        preprocess_function,
-        batched=True,
-        num_proc=1,
-        remove_columns=column_names,
-        # load_from_cache_file=not data_args.overwrite_cache,
-        desc="Running tokenizer on train dataset",
-    )
+        dataset = dataset.map(
+            preprocess_function,
+            batched=True,
+            num_proc=12,
+            remove_columns=column_names,
+            # load_from_cache_file=not data_args.overwrite_cache,
+            desc="Running tokenizer on train dataset",
+            # cache_file_name="data/cache"
+        )
+        dataset.save_to_disk(DATA_PATH)
 
-    eval_dataset = dataset["validation"].map(
-        preprocess_function,
-        batched=True,
-        num_proc=1,
-        remove_columns=column_names,
-        # load_from_cache_file=not data_args.overwrite_cache,
-        desc="Running tokenizer on validation dataset",
-    )
+    else:
+        print(" ===== LOADING DATA FROM ", DATA_PATH)
+        dataset = load_from_disk(DATA_PATH)
+
+    train_dataset = dataset["train"]
+
+
+
+    eval_dataset = dataset["validation"]
     # config = AutoConfig.from_pretrained("readerbench/RoBERT-small")
 
     encoder = BertGenerationEncoder.from_pretrained("readerbench/RoBERT-small", bos_token_id=tokenizer.bos_token_id, eos_token_id=tokenizer.eos_token_id)
@@ -123,8 +123,8 @@ if __name__ == "__main__":
         output_dir="./",
         learning_rate=5e-5,
         # evaluation_strategy="steps",
-        per_device_train_batch_size=4,
-        per_device_eval_batch_size=8,
+        per_device_train_batch_size=32,
+        per_device_eval_batch_size=64,
         predict_with_generate=True,
         overwrite_output_dir=True,
         save_total_limit=3,
