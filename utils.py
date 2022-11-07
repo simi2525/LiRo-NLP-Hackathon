@@ -1,6 +1,7 @@
 import numpy as np
 from transformers import CanineTokenizer
 from transformers import MT5ForConditionalGeneration, T5Tokenizer
+import re
 
 class PreprocessingUtils():
     def __init__(self,percentage_diacritics_removed,max_length):
@@ -31,13 +32,8 @@ class PreprocessingUtils():
         batch = self.add_partial_no_diac_input(batch)
         batch = self.make_actual_labels(batch)
         batch = self.make_input_mask(batch)
-        batch = self.make_actual_labels(batch)
-        batch = self.make_actual_labels(batch)
-        batch = self.make_actual_labels(batch)
-        batch = self.make_actual_labels(batch)
-        batch = self.make_actual_labels(batch)
-        batch = self.tokenize_input(batch)
-        batch = [self.pad_attention_mask(b) for b in batch]
+        batch = self.cannie_tokenize_input(batch)
+        batch = self.pad_attention_mask(batch)
         return batch
     
     def preprocess_t5(self, batch):
@@ -89,21 +85,19 @@ class PreprocessingUtils():
         return examples
     
     def cannie_tokenize_input(self,examples):
-        return self.cannie_tokenizer(examples['input'], padding="max_length", truncation=True, max_length=self.max_length)
+        return examples | self.cannie_tokenizer(examples['input'], padding="max_length", truncation=True, max_length=self.max_length)
     
     def t5_tokenize_input(self,examples):
-        return self.t5_tokenizer(examples['input'], padding="max_length", truncation=True, max_length=self.max_length)
+        return examples | self.t5_tokenizer(examples['input'], padding="max_length", truncation=True, max_length=self.max_length)
     
     def t5_char2tokens(self,example):
         return {"t5_char_tokens" : self.char2token(example["input"])}
     
-    def pad_attention_mask(self, example):
-        return {"attention_mask" : 
-            [0] 
-            + example["input_mask"] 
-            + [0]
-            + [0] * (len(example["input_ids"]) - len(example["input_mask"]) - 2)
-        }
+    def pad_attention_mask(self, examples):
+        def sample_pad_attention_mask(example):
+            return [0] + example + [0] + [0] * (len(example) - len(example) - 2)
+        examples["attention_mask"] = [sample_pad_attention_mask(l) for l in examples["input_mask"]]
+        return examples
     
     def pad_t5_tokens(self, example):
         return {"t5_char_tokens" : 

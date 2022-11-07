@@ -3,6 +3,7 @@ import torch
 import re
 from datasets import load_dataset
 from transformers import CanineTokenizer
+import re
 
 from torch.utils.data import DataLoader
 
@@ -28,22 +29,22 @@ train_ds = train_ds.rename_column("text", "labels")
 
 utils = PreprocessingUtils(percentage_diacritics_removed=percentage_diacritics_removed, max_length=max_length)
 
-train_ds = train_ds.map(utils.preprocess_cannie, batched=True, num_proc=16)
+train_ds = train_ds.map(utils.preprocess_cannie, batched=True, num_proc=32)
 # train_ds = train_ds.map(utils.add_partial_no_diac_input, batched=True)
 # train_ds = train_ds.map(utils.make_actual_labels, batched=True)
 # train_ds = train_ds.map(utils.make_input_mask, batched=True)
-# train_ds = train_ds.map(utils.tokenize_input,batched=True)
+# train_ds = train_ds.map(utils.cannie_tokenize_input,batched=True)
 # train_ds = train_ds.map(utils.pad_attention_mask, num_proc=8)
 train_ds = train_ds.rename_columns({"input_ids" : "canine_input_ids", "token_type_ids" : "canine_token_type_ids", "attention_mask" : "canine_attention_mask" })
-        
+print('done preprocessing cannie')        
 
-train_ds = train_ds.map(utils.preprocess_t5, batched=True, num_proc=16)
+train_ds = train_ds.map(utils.preprocess_t5, batched=True, num_proc=32)
 # train_ds = train_ds.map(utils.t5_char2tokens)
 # train_ds = train_ds.map(utils.pad_t5_tokens, num_proc=8)
 # train_ds = train_ds.map(utils.t5_tokenize_input, batched=True)
 train_ds = train_ds.rename_columns({"input_ids" : "t5_input_ids", "attention_mask" : "t5_attention_mask"})
 
-train_ds = train_ds.map(utils.preprocess_cannie_t5, batched=True, num_proc=16)
+train_ds = train_ds.map(utils.preprocess_cannie_t5, batched=True, num_proc=32)
 # train_ds = train_ds.map(utils.pad_labels)
 # train_ds = train_ds.map(utils.truncate_labels)
 # train_ds = train_ds.map(utils.truncate_t5_char_tokens)
