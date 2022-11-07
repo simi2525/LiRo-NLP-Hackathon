@@ -27,7 +27,32 @@ class PreprocessingUtils():
         self.t5_tokenizer = T5Tokenizer.from_pretrained('iliemihai/mt5-base-romanian-diacritics')
 
 
-
+    def preprocess_cannie(self, batch):
+        batch = self.add_partial_no_diac_input(batch)
+        batch = self.make_actual_labels(batch)
+        batch = self.make_input_mask(batch)
+        batch = self.make_actual_labels(batch)
+        batch = self.make_actual_labels(batch)
+        batch = self.make_actual_labels(batch)
+        batch = self.make_actual_labels(batch)
+        batch = self.make_actual_labels(batch)
+        batch = self.tokenize_input(batch)
+        batch = [self.pad_attention_mask(b) for b in batch]
+        return batch
+    
+    def preprocess_t5(self, batch):
+        batch = self.t5_char2tokens(batch)
+        batch = [self.t5_char2tokens(b) for b in batch]
+        batch = [self.pad_t5_tokens(b) for b in batch]
+        batch = self.t5_tokenize_input(batch)
+        return batch
+        
+    def preprocess_cannie_t5(self, batch):
+        batch = [self.pad_labels(b) for b in batch]
+        batch = [self.truncate_labels(b) for b in batch]
+        batch = [self.truncate_t5_char_tokens(b) for b in batch]
+        batch = [self.truncate_canine_attention_mask(b) for b in batch]
+        return batch
 
     def add_partial_no_diac_input(self, examples):
         def remove_diacritics(input_txt):
