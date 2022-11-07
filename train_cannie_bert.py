@@ -4,6 +4,9 @@ import re
 from datasets import load_dataset
 from transformers import CanineTokenizer
 import re
+import matplotlib.pyplot as plt
+from tqdm import tqdm
+
 
 from torch.utils.data import DataLoader
 
@@ -16,44 +19,28 @@ from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
 
 wandb.login()
 
-max_length = 1024
+max_length = 256
 
-percentage_diacritics_removed = 1.0
+percentage_diacritics_removed = 0.95
 
 
 dataset = load_dataset("dumitrescustefan/diacritic")
-dataset["train"] = dataset["train"]#.select(list(range(1000)))
-dataset["validation"] = dataset["validation"]#.select(list(range(100)))
+dataset["train"] = dataset["train"].select(list(range(1000)))
+dataset["validation"] = dataset["validation"].select(list(range(1000)))
 train_ds = dataset
 train_ds = train_ds.rename_column("text", "labels")
 
 utils = PreprocessingUtils(percentage_diacritics_removed=percentage_diacritics_removed, max_length=max_length)
 
-train_ds = train_ds.map(utils.preprocess_cannie, batched=True, num_proc=32)
-# train_ds = train_ds.map(utils.add_partial_no_diac_input, batched=True)
-# train_ds = train_ds.map(utils.make_actual_labels, batched=True)
-# train_ds = train_ds.map(utils.make_input_mask, batched=True)
-# train_ds = train_ds.map(utils.cannie_tokenize_input,batched=True)
-# train_ds = train_ds.map(utils.pad_attention_mask, num_proc=8)
-train_ds = train_ds.rename_columns({"input_ids" : "canine_input_ids", "token_type_ids" : "canine_token_type_ids", "attention_mask" : "canine_attention_mask" })
-print('done preprocessing cannie')        
+train_ds = train_ds.map(utils.preprocess_all, batched=True, num_proc=16)
 
-train_ds = train_ds.map(utils.preprocess_t5, batched=True, num_proc=32)
-# train_ds = train_ds.map(utils.t5_char2tokens)
-# train_ds = train_ds.map(utils.pad_t5_tokens, num_proc=8)
-# train_ds = train_ds.map(utils.t5_tokenize_input, batched=True)
-train_ds = train_ds.rename_columns({"input_ids" : "t5_input_ids", "attention_mask" : "t5_attention_mask"})
 
-train_ds = train_ds.map(utils.preprocess_cannie_t5, batched=True, num_proc=32)
-# train_ds = train_ds.map(utils.pad_labels)
-# train_ds = train_ds.map(utils.truncate_labels)
-# train_ds = train_ds.map(utils.truncate_t5_char_tokens)
-# train_ds = train_ds.map(utils.truncate_canine_attention_mask)
+per_label_counts = [4.69565512e+09, 8.99334790e+07, 6.15484390e+07, 1.25212488e+08]
 
-# per_label_counts = [3297059,  313306,  102377,   49724,  118957,  135583]
-# n_samples = sum(per_label_counts)
-# per_label_weights = [n_samples / (c * n_samples) for c in per_label_counts]
-# print("Label weights", per_label_weights)
+n_samples = sum(per_label_counts)
+per_label_weights = [n_samples / (c * n_samples) for c in per_label_counts]
+per_label_weights = [w * 1/max(per_label_weights) for w in per_label_weights]
+print("Label weights", per_label_weights)
 
 test_ds = train_ds["validation"]
 train_ds = train_ds["train"]
