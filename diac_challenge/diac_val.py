@@ -220,6 +220,9 @@ def char2token(input_text):
             result[i] = result[j]
     return result
 
+
+model = CanineReviewClassifier.load_from_checkpoint('../cannie_v4_checkpoints/epoch=3-step=3748.ckpt',strict=False)
+model.eval()    
 def evaluate_cannie(gold):
     max_length = 256
 
@@ -246,7 +249,6 @@ def evaluate_cannie(gold):
 
     tokenizer = CanineTokenizer.from_pretrained("google/canine-s")
 
-    model = CanineReviewClassifier.load_from_checkpoint('../cannie_v4_checkpoints/epoch=3-step=3748.ckpt',strict=False)
     # model = CanineReviewClassifier()
 
     text = gold
@@ -379,15 +381,11 @@ def evaluate_cannie_t5(gold):
 # how to use
 if __name__ == "__main__":
     file1 = open('diac_hidden_1k.txt', 'r')
-    file2 = open('results_cannie.txt', 'a')
-    file3 = open('results_canniet5.txt', 'a')
+    file2 = open('results_cannie_eval.txt', 'a')
     for line in file1.readlines():
         file2.write(evaluate_cannie(Evaluator.remove_diacritics(line)))
-        # file3.write(evaluate_cannie(line))
         file2.flush()
-        # file3.flush()
     file2.close()
-    # file3.close()
     gold = "Fata are un măr în mână."
     evaluate_cannie(gold)
     evaluate_cannie_t5(gold)

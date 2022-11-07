@@ -332,7 +332,7 @@ def evaluate_cannie_t5(gold):
     t5_encoding = t5_tokenizer(text, return_tensors='pt')
     t5_encoding = {"t5_" + key: value for key,value in t5_encoding.items()}
     result = {**t5_encoding, **encoding}
-    result["t5_char_tokens"] = char2token(text)
+    result["t5_char_tokens"] = torch.tensor([0] + char2token(text) + [0]).unsqueeze(0).to('cuda')
 
     # forward pass
     outputs = model(**result)
@@ -379,16 +379,10 @@ def evaluate_cannie_t5(gold):
 # how to use
 if __name__ == "__main__":
     file1 = open('diac_hidden_1k.txt', 'r')
-    file2 = open('results_cannie.txt', 'a')
     file3 = open('results_canniet5.txt', 'a')
     for line in file1.readlines():
-        file2.write(evaluate_cannie(Evaluator.remove_diacritics(line)))
-        # file3.write(evaluate_cannie(line))
-        file2.flush()
-        # file3.flush()
-    file2.close()
-    # file3.close()
+        file3.write(evaluate_cannie_t5(Evaluator.remove_diacritics(line)))
+        file3.flush()
+    file3.close()
     gold = "Fata are un măr în mână."
-    evaluate_cannie(gold)
-    evaluate_cannie_t5(gold)
     
