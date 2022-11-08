@@ -31,9 +31,6 @@ class PreprocessingUtils():
 
     def preprocess_all(self, batch):
         batch = self.preprocess_batch_group_1(batch)
-        # batch = self.add_partial_no_diac_input(batch)
-        # batch = self.make_actual_labels(batch)
-        # batch = self.make_input_mask(batch)
         batch = self.cannie_tokenize_input(batch)
         batch = self.pad_attention_mask(batch)
         
@@ -49,10 +46,6 @@ class PreprocessingUtils():
         batch['t5_attention_mask'] = batch.pop('attention_mask')
         
         batch = self.preprocess_batch_group_2(batch)
-        # batch = self.pad_labels(batch)
-        # batch = self.truncate_labels(batch)
-        # batch = self.truncate_canine_attention_mask(batch)
-        # batch = self.truncate_t5_char_tokens(batch)
         
         return batch
     
@@ -97,12 +90,11 @@ class PreprocessingUtils():
         
     def preprocess_batch_group_2(self, examples):
         def sample_pad_labels(example):
-            return [0] + example + [0] + [0] * (len(example) - len(example) - 2)
+            return [0] + example + [0] + [0] * (self.max_length - len(example) - 2)
         def sample_truncate_cannie_attention_mask(example):
             return example[:self.max_length]
         def sample_truncate_t5_char_token(example):
             return example[:self.max_length]
-        examples["t5_char_tokens"] = [sample_truncate_t5_char_token(l) for l in examples["t5_char_tokens"]]
         
         labels_aux = []
         canine_attention_mask_aux = []
@@ -167,19 +159,19 @@ class PreprocessingUtils():
     
     def pad_attention_mask(self, examples):
         def sample_pad_attention_mask(example):
-            return [0] + example + [0] + [0] * (len(example) - len(example) - 2)
+            return [0] + example + [0] + [0] * (self.max_length - len(example) - 2)
         examples["attention_mask"] = [sample_pad_attention_mask(l) for l in examples["input_mask"]]
         return examples
     
     def pad_t5_tokens(self, examples):
         def sample_pad_t5_tokens(example):
-            return [0] + example + [0] + [0] * (len(examples['input_ids'][0]) - len(example) - 2)
+            return [0] + example + [0] + [0] * (self.max_length - len(example) - 2)
         examples["t5_char_tokens"] = [sample_pad_t5_tokens(l) for l in examples["t5_char_tokens"]]
         return examples
     
     def pad_labels(self, examples):
         def sample_pad_labels(example):
-            return [0] + example + [0] + [0] * (len(example) - len(example) - 2)
+            return [0] + example + [0] + [0] * (self.max_length - len(example) - 2)
         examples["labels"] = [sample_pad_labels(l) for l in examples["labels"]]
         return examples
     

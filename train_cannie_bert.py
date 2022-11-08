@@ -32,7 +32,7 @@ train_ds = train_ds.rename_column("text", "labels")
 
 utils = PreprocessingUtils(percentage_diacritics_removed=percentage_diacritics_removed, max_length=max_length)
 
-train_ds = train_ds.map(utils.preprocess_all, batched=True, num_proc=16)
+train_ds = train_ds.map(utils.preprocess_all, batched=True, num_proc=None)
 
 
 per_label_counts = [4.69565512e+09, 8.99334790e+07, 6.15484390e+07, 1.25212488e+08]
@@ -47,9 +47,8 @@ train_ds = train_ds["train"]
 
 s = train_ds[0]
 for key, value in s.items():
-    print(key)
     if isinstance(value, list):
-        print(len(value))
+        print(key,len(value))
 
 exit()
 
