@@ -25,15 +25,13 @@ percentage_diacritics_removed = 0.95
 
 
 dataset = load_dataset("dumitrescustefan/diacritic")
-dataset["train"] = dataset["train"].select(list(range(1000)))
-dataset["validation"] = dataset["validation"].select(list(range(1000)))
+dataset["train"] = dataset["train"].select(list(range(10000)))
+dataset["validation"] = dataset["validation"].select(list(range(10000)))
 train_ds = dataset
 train_ds = train_ds.rename_column("text", "labels")
 
 utils = PreprocessingUtils(percentage_diacritics_removed=percentage_diacritics_removed, max_length=max_length)
-
 train_ds = train_ds.map(utils.preprocess_all, batched=True, num_proc=None)
-
 
 per_label_counts = [4.69565512e+09, 8.99334790e+07, 6.15484390e+07, 1.25212488e+08]
 

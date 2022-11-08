@@ -111,39 +111,6 @@ class PreprocessingUtils():
         
         return examples
     
-    def add_partial_no_diac_input(self, examples):
-        def remove_diacritics(input_txt):
-            diac_map = {'ț': 't', 'ș': 's', 'Ț': 'T', 'Ș': 'S', 'Ă': 'A', 'ă': 'a', 'Â': 'A', 'â': 'a', 'Î': 'I', 'î': 'i'}
-            diacritic_positions = [m.start() for m in re.finditer('ț|ș|Ț|Ș|Ă|ă|Â|â|Î|î', input_txt)]
-            to_remove_diacritic_positions = np.random.choice(diacritic_positions, int(len(diacritic_positions) * self.percentage_diacritics_removed), replace=False)
-            for i in range(len(to_remove_diacritic_positions)):
-                input_txt = input_txt[:to_remove_diacritic_positions[i]]+ diac_map[input_txt[to_remove_diacritic_positions[i]]] + input_txt[to_remove_diacritic_positions[i]+1:]
-            return input_txt
-        examples['input'] = [remove_diacritics(input_txt=l) for l in examples["labels"]]
-        return examples
-    
-    
-    def make_actual_labels(self,examples):
-        def make_a_l(lbl):
-            result = []
-            for s in lbl:
-                if s in self.chars_with_virgula:
-                    result.append(self.label2id['virgula'])
-                elif s in self.chars_with_caciulita:
-                    result.append(self.label2id['caciulita'])
-                elif s in self.chars_with_cupa:
-                    result.append(self.label2id['cupa'])
-                else:
-                    result.append(self.label2id["no_diac"])
-            return result
-        examples['labels'] = [make_a_l(l) for l in examples["labels"]]
-        return examples
-    
-    def make_input_mask(self,examples):
-        def make_im(input_txt):
-            return list([0 if e not in self.chars_can_have_diacritics or e in self.chars_with_diacritics else 1 for e in input_txt])
-        examples["input_mask"] = [make_im(l) for l in examples["input"]]
-        return examples
     
     def cannie_tokenize_input(self,examples):
         return examples | self.cannie_tokenizer(examples['input'], padding="max_length", truncation=True, max_length=self.max_length)
@@ -167,30 +134,6 @@ class PreprocessingUtils():
         def sample_pad_t5_tokens(example):
             return [0] + example + [0] + [0] * (self.max_length - len(example) - 2)
         examples["t5_char_tokens"] = [sample_pad_t5_tokens(l) for l in examples["t5_char_tokens"]]
-        return examples
-    
-    def pad_labels(self, examples):
-        def sample_pad_labels(example):
-            return [0] + example + [0] + [0] * (self.max_length - len(example) - 2)
-        examples["labels"] = [sample_pad_labels(l) for l in examples["labels"]]
-        return examples
-    
-    def truncate_labels(self,examples):
-        def sample_truncate_labels(example):
-            return example[:self.max_length]
-        examples["labels"] = [sample_truncate_labels(l) for l in examples["labels"]]
-        return examples
-    
-    def truncate_t5_char_tokens(self,examples):
-        def sample_truncate_t5_char_token(example):
-            return example[:self.max_length]
-        examples["t5_char_tokens"] = [sample_truncate_t5_char_token(l) for l in examples["t5_char_tokens"]]
-        return examples
-    
-    def truncate_canine_attention_mask(self,examples):
-        def sample_truncate_cannie_attention_mask(example):
-            return example[:self.max_length]
-        examples["canine_attention_mask"] = [sample_truncate_cannie_attention_mask(l) for l in examples["canine_attention_mask"]]
         return examples
     
     def char2token(self,input_text):
