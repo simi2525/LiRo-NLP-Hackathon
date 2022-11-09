@@ -23,10 +23,10 @@ class CanineForTokenClassificationCustom(CaninePreTrainedModel):
         self.canine = CanineModel(config)
         self.t5 = MT5ForConditionalGeneration.from_pretrained('iliemihai/mt5-base-romanian-diacritics').encoder
 
-        for param in self.canine.parameters():
-            param.requires_grad = False
-        for param in self.t5.parameters():
-            param.requires_grad = False
+        # for param in self.canine.parameters():
+        #     param.requires_grad = False
+        # for param in self.t5.parameters():
+        #     param.requires_grad = False
 
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
         encoder_layer = nn.TransformerEncoderLayer(d_model=config.hidden_size + 768, nhead=4)
