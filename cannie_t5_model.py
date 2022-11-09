@@ -10,6 +10,8 @@ from transformers import CaninePreTrainedModel, \
     CanineModel, MT5ForConditionalGeneration
 from transformers.modeling_outputs import TokenClassifierOutput
 
+from transformers import AutoModel
+
 LR = 1e-4
 
 PRETRAINED_MODELS_CACHE = None
@@ -21,17 +23,19 @@ class CanineForTokenClassificationCustom(CaninePreTrainedModel):
         self.num_labels = config.num_labels
 
         self.canine = CanineModel(config)
-        self.t5 = MT5ForConditionalGeneration.from_pretrained('iliemihai/mt5-base-romanian-diacritics').encoder
+        # self.t5 = MT5ForConditionalGeneration.from_pretrained('iliemihai/mt5-base-romanian-diacritics').encoder
+        self.t5 = AutoModel.from_pretrained("readerbench/RoBERT-small")
 
         # for param in self.canine.parameters():
         #     param.requires_grad = False
         # for param in self.t5.parameters():
         #     param.requires_grad = False
 
-        self.dropout = nn.Dropout(config.hidden_dropout_prob)
-        encoder_layer = nn.TransformerEncoderLayer(d_model=config.hidden_size + 768, nhead=4)
+        self.bert_dropout = nn.Dropout(p=0.2)
+        self.canine_dropout = nn.Dropout(p=0.2)
+        encoder_layer = nn.TransformerEncoderLayer(d_model=config.hidden_size + self.t5.encoder.config.hidden_size, nhead=4)
         self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=6)
-        self.classifier_final = nn.Linear(config.hidden_size + 768, config.num_labels)
+        self.classifier_final = nn.Linear(config.hidden_size + self.t5.encoder.config.hidden_size, config.num_labels)
 
         # Initialize weights and apply final processing
         self.post_init()
@@ -179,9 +183,3 @@ class CanineReviewClassifier(pl.LightningModule):
         # We could make the optimizer more fancy by adding a scheduler and specifying which parameters do
         # not require weight_decay but just using AdamW out-of-the-box works fine
         return AdamW(self.parameters(), lr=LR)
-
-    # def train_dataloader(self):
-    #     return train_dataloader
-    #
-    # def val_dataloader(self):
-    #     return test_dataloader

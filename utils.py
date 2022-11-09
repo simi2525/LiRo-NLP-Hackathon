@@ -1,5 +1,5 @@
 import numpy as np
-from transformers import CanineTokenizer
+from transformers import CanineTokenizer, AutoTokenizer
 from transformers import MT5ForConditionalGeneration, T5Tokenizer
 import re
 
@@ -25,7 +25,7 @@ class PreprocessingUtils():
         self.label2id = {label:idx for idx, label in enumerate(self.labels)}
         
         self.cannie_tokenizer = CanineTokenizer.from_pretrained("google/canine-s")
-        self.t5_tokenizer = T5Tokenizer.from_pretrained('iliemihai/mt5-base-romanian-diacritics')
+        self.t5_tokenizer = AutoTokenizer.from_pretrained("readerbench/RoBERT-small")
 
 
 
