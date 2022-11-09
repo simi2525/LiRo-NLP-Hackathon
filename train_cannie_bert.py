@@ -1,21 +1,11 @@
-import numpy as np
-import torch
-import re
-from datasets import load_dataset
-from transformers import CanineTokenizer
-import re
-import matplotlib.pyplot as plt
-from tqdm import tqdm
-
-
-from torch.utils.data import DataLoader
-
-from utils import PreprocessingUtils
 import wandb
-
+from datasets import load_dataset
 from pytorch_lightning import Trainer
+from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.loggers import WandbLogger
-from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
+from torch.utils.data import DataLoader
+from cannie_t5_model import CanineReviewClassifier
+from utils import PreprocessingUtils
 
 wandb.login()
 
@@ -25,8 +15,8 @@ percentage_diacritics_removed = 0.95
 
 
 dataset = load_dataset("dumitrescustefan/diacritic")
-dataset["train"] = dataset["train"].select(list(range(10000)))
-dataset["validation"] = dataset["validation"].select(list(range(10000)))
+dataset["train"] = dataset["train"].select(list(range(100)))
+dataset["validation"] = dataset["validation"].select(list(range(100)))
 train_ds = dataset
 train_ds = train_ds.rename_column("text", "labels")
 
@@ -48,13 +38,13 @@ for key, value in s.items():
     if isinstance(value, list):
         print(key,len(value))
 
-exit()
+# exit()
 
 train_ds.set_format(type="torch", columns=['id', 'canine_input_ids', 'canine_token_type_ids', 'canine_attention_mask', "t5_char_tokens",'t5_input_ids','t5_attention_mask', 'labels'])
 test_ds.set_format(type="torch", columns=['id', 'canine_input_ids', 'canine_token_type_ids', 'canine_attention_mask', "t5_char_tokens",'t5_input_ids','t5_attention_mask', 'labels'])
 
-TRAIN_BATCH_SIZE = 64
-TEST_BATCH_SIZE = 64
+TRAIN_BATCH_SIZE = 1
+TEST_BATCH_SIZE = 2
 LR = 1e-4
 EPOCHS = 100
 
@@ -62,8 +52,8 @@ train_dataloader = DataLoader(train_ds, batch_size=TRAIN_BATCH_SIZE, shuffle=Tru
 test_dataloader = DataLoader(test_ds, batch_size=TEST_BATCH_SIZE, drop_last=False)
 
 checkpoint_callback = ModelCheckpoint(dirpath="checkpoints_t5", save_top_k=-1, monitor="validation_loss")
-# model = CanineReviewClassifier()
-model = CanineReviewClassifier.load_from_checkpoint('cannie_v4_checkpoints/epoch=3-step=3748.ckpt', strict=False)
-wandb_logger = WandbLogger(name='total_diacricitc_t5_cannie', project='CANINE')
+model = CanineReviewClassifier(labels=utils.labels, id2label=utils.id2label, label2id=utils.label2id)
+# model = CanineReviewClassifier.load_from_checkpoint('cannie_v4_checkpoints/epoch=3-step=3748.ckpt', strict=False)
+wandb_logger = WandbLogger(name='dev_diacricitc_t5_cannie', project='CANINE')
 trainer = Trainer(accelerator='gpu',devices=1, logger=wandb_logger, callbacks=[checkpoint_callback], max_epochs=EPOCHS, )
-trainer.fit(model)
+trainer.fit(model, train_dataloader, test_dataloader)
