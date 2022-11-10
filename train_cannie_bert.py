@@ -7,7 +7,7 @@ from torch.utils.data import DataLoader
 from cannie_t5_model import CanineReviewClassifier
 from utils import PreprocessingUtils
 
-CACHE_PREPROCESSING = True
+CACHE_PREPROCESSING = False
 if __name__ == '__main__':
     wandb.login()
 
@@ -23,7 +23,6 @@ if __name__ == '__main__':
     train_ds = train_ds.rename_column("text", "labels")
 
     utils = PreprocessingUtils(percentage_diacritics_removed=percentage_diacritics_removed, max_length=max_length)
-    train_ds = train_ds.map(utils.preprocess_all, batched=True, num_proc=16,  load_from_cache_file=CACHE_PREPROCESSING)
     train_ds = train_ds.map(utils.preprocess_all, batched=True, num_proc=16,  load_from_cache_file=CACHE_PREPROCESSING)
 
     per_label_counts = [4.69565512e+09, 8.99334790e+07, 6.15484390e+07, 1.25212488e+08]
@@ -46,17 +45,17 @@ if __name__ == '__main__':
     train_ds.set_format(type="torch", columns=['id', 'canine_input_ids', 'canine_token_type_ids', 'canine_attention_mask', "t5_char_tokens",'t5_input_ids','t5_attention_mask', 'labels'])
     test_ds.set_format(type="torch", columns=['id', 'canine_input_ids', 'canine_token_type_ids', 'canine_attention_mask', "t5_char_tokens",'t5_input_ids','t5_attention_mask', 'labels'])
 
-    TRAIN_BATCH_SIZE = 16
-    TEST_BATCH_SIZE = 16
-    LR = 1e-3
+    TRAIN_BATCH_SIZE = 64
+    TEST_BATCH_SIZE = 64
+    LR = 5e-4
     EPOCHS = 10
 
     train_dataloader = DataLoader(train_ds, batch_size=TRAIN_BATCH_SIZE, shuffle=True, drop_last=True)
     test_dataloader = DataLoader(test_ds, batch_size=TEST_BATCH_SIZE, drop_last=False)
 
     checkpoint_callback = ModelCheckpoint(dirpath="checkpoints_cannie_bert", save_top_k=-1, monitor="validation_loss")
-    model = CanineReviewClassifier(labels=utils.labels, id2label=utils.id2label, label2id=utils.label2id)
-    # model = CanineReviewClassifier.load_from_checkpoint('cannie_v4_checkpoints/epoch=3-step=3748.ckpt', strict=False)
-    wandb_logger = WandbLogger(name='dev_diacricitc_t5_cannie', project='Diacritic')
-    trainer = Trainer(accelerator='gpu',precision='bf16', amp_backend="native",devices=2, logger=wandb_logger, callbacks=[checkpoint_callback], max_epochs=EPOCHS, accumulate_grad_batches=2)
+    # model = CanineReviewClassifier(labels=utils.labels, id2label=utils.id2label, label2id=utils.label2id)
+    model = CanineReviewClassifier.load_from_checkpoint('checkpoints_epoch1/epoch=0-step=156250.ckpt', strict=True, labels=utils.labels, id2label=utils.id2label, label2id=utils.label2id)
+    wandb_logger = WandbLogger(name='dev_diacricitc_t5_cannie_small', project='Diacritic')
+    trainer = Trainer(accelerator='gpu',precision='bf16', amp_backend="native",devices=2, logger=wandb_logger, callbacks=[checkpoint_callback], max_epochs=EPOCHS, accumulate_grad_batches=1)
     trainer.fit(model, train_dataloader, test_dataloader)
