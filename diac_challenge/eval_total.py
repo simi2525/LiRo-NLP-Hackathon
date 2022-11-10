@@ -3,7 +3,7 @@ import regex as re
 import numpy as np
 import torch
 import re
-from CanineForTokenClassificationCustom import CanineReviewClassifier
+from DiacCanineBertTokenClassification import CanineReviewClassifier
 from CanineT5 import CanieT5
 
 from transformers import CanineTokenizer
@@ -188,7 +188,7 @@ class Evaluator():
 
 
 gold = file1 = open('diac_hidden_1k.txt', 'r').read()
-prediction = file2 = open('results_cannie_eval.txt', 'r').read()
+prediction = file2 = open('results_canine_eval.txt', 'r').read()
 
 evaluator = Evaluator()
 print(evaluator.evaluate(gold, prediction))

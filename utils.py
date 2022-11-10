@@ -1,6 +1,5 @@
 import numpy as np
-from transformers import CanineTokenizer, AutoTokenizer
-from transformers import MT5ForConditionalGeneration, T5Tokenizer
+from transformers import AutoTokenizer
 import re
 
 class PreprocessingUtils():
@@ -24,26 +23,26 @@ class PreprocessingUtils():
         self.id2label = {idx:label for idx, label in enumerate(self.labels)}
         self.label2id = {label:idx for idx, label in enumerate(self.labels)}
         
-        self.cannie_tokenizer = CanineTokenizer.from_pretrained("google/canine-s")
-        self.t5_tokenizer = AutoTokenizer.from_pretrained("readerbench/RoBERT-small")
+        self.canine_tokenizer = AutoTokenizer.from_pretrained("google/canine-c")
+        self.bert_tokenizer = AutoTokenizer.from_pretrained("readerbench/RoBERT-base")
 
 
 
     def preprocess_all(self, batch):
         batch = self.preprocess_batch_group_1(batch)
-        batch = self.cannie_tokenize_input(batch)
+        batch = self.canine_tokenize_input(batch)
         batch = self.pad_attention_mask(batch)
         
         batch['canine_input_ids'] = batch.pop('input_ids')
         batch['canine_token_type_ids'] = batch.pop('token_type_ids')
         batch['canine_attention_mask'] = batch.pop('attention_mask')
         
-        batch = self.t5_char2tokens(batch)
-        batch = self.t5_tokenize_input(batch)
-        batch = self.pad_t5_tokens(batch)
+        batch = self.bert_char2tokens(batch)
+        batch = self.bert_tokenize_input(batch)
+        batch = self.pad_bert_tokens(batch)
         
-        batch['t5_input_ids'] = batch.pop('input_ids')
-        batch['t5_attention_mask'] = batch.pop('attention_mask')
+        batch['bert_input_ids'] = batch.pop('input_ids')
+        batch['bert_attention_mask'] = batch.pop('attention_mask')
         
         batch = self.preprocess_batch_group_2(batch)
         
@@ -91,37 +90,37 @@ class PreprocessingUtils():
     def preprocess_batch_group_2(self, examples):
         def sample_pad_labels(example):
             return [0] + example + [0] + [0] * (self.max_length - len(example) - 2)
-        def sample_truncate_cannie_attention_mask(example):
+        def sample_truncate_canine_attention_mask(example):
             return example[:self.max_length]
-        def sample_truncate_t5_char_token(example):
+        def sample_truncate_bert_char_token(example):
             return example[:self.max_length]
         
         labels_aux = []
         canine_attention_mask_aux = []
-        t5_char_tokens_aux = []
+        bert_char_tokens_aux = []
         
         for i in range(len(examples['labels'])):
             labels_aux.append(sample_pad_labels(examples['labels'][i])[:self.max_length])
-            canine_attention_mask_aux.append(sample_truncate_cannie_attention_mask(examples['canine_attention_mask'][i]))
-            t5_char_tokens_aux.append(sample_truncate_t5_char_token(examples['t5_char_tokens'][i]))
+            canine_attention_mask_aux.append(sample_truncate_canine_attention_mask(examples['canine_attention_mask'][i]))
+            bert_char_tokens_aux.append(sample_truncate_bert_char_token(examples['bert_char_tokens'][i]))
         
         examples['labels'] = labels_aux
         examples['canine_attention_mask'] = canine_attention_mask_aux
-        examples['t5_char_tokens'] = t5_char_tokens_aux
+        examples['bert_char_tokens'] = bert_char_tokens_aux
         
         return examples
     
     
-    def cannie_tokenize_input(self,examples):
-        return examples | self.cannie_tokenizer(examples['input'], padding="max_length", truncation=True, max_length=self.max_length)
+    def canine_tokenize_input(self,examples):
+        return examples | self.canine_tokenizer(examples['input'], padding="max_length", truncation=True, max_length=self.max_length)
     
-    def t5_tokenize_input(self,examples):
-        return examples | self.t5_tokenizer(examples['input'], padding="max_length", truncation=True, max_length=self.max_length)
+    def bert_tokenize_input(self,examples):
+        return examples | self.bert_tokenizer(examples['input'], padding="max_length", truncation=True, max_length=self.max_length)
     
-    def t5_char2tokens(self,examples):
+    def bert_char2tokens(self,examples):
         def sample_char2tokens(example):
           return self.char2token(example)
-        examples["t5_char_tokens"] = [sample_char2tokens(l) for l in examples["input"]]
+        examples["bert_char_tokens"] = [sample_char2tokens(l) for l in examples["input"]]
         return examples
     
     def pad_attention_mask(self, examples):
@@ -130,14 +129,14 @@ class PreprocessingUtils():
         examples["attention_mask"] = [sample_pad_attention_mask(l) for l in examples["input_mask"]]
         return examples
     
-    def pad_t5_tokens(self, examples):
-        def sample_pad_t5_tokens(example):
+    def pad_bert_tokens(self, examples):
+        def sample_pad_bert_tokens(example):
             return [0] + example + [0] + [0] * (self.max_length - len(example) - 2)
-        examples["t5_char_tokens"] = [sample_pad_t5_tokens(l) for l in examples["t5_char_tokens"]]
+        examples["bert_char_tokens"] = [sample_pad_bert_tokens(l) for l in examples["bert_char_tokens"]]
         return examples
     
     def char2token(self,input_text):
-        bert_tokenized_input = self.t5_tokenizer.tokenize(input_text)
+        bert_tokenized_input = self.bert_tokenizer.tokenize(input_text)
         bert_tokenized_input = [b.replace("▁", '') for b in bert_tokenized_input]
 
         token_idx = [[i] * len(tok) for i,tok in enumerate(bert_tokenized_input)]

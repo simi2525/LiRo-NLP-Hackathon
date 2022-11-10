@@ -4,7 +4,7 @@ from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.loggers import WandbLogger
 from torch.utils.data import DataLoader
-from cannie_t5_model import CanineReviewClassifier
+from canine_bert_model import DiacCanineBertTokenClassification
 from utils import PreprocessingUtils
 
 CACHE_PREPROCESSING = False
@@ -17,8 +17,8 @@ if __name__ == '__main__':
 
 
     dataset = load_dataset("dumitrescustefan/diacritic")
-    dataset["train"] = dataset["train"].select(list(range(5000000)))
-    dataset["validation"] = dataset["validation"]#.select(list(range(1000000)))
+    dataset["train"] = dataset["train"].select(list(range(10000000)))
+    dataset["validation"] = dataset["validation"]#.select(list(range(1000)))
     train_ds = dataset
     train_ds = train_ds.rename_column("text", "labels")
 
@@ -42,20 +42,20 @@ if __name__ == '__main__':
 
     # exit()
 
-    train_ds.set_format(type="torch", columns=['id', 'canine_input_ids', 'canine_token_type_ids', 'canine_attention_mask', "t5_char_tokens",'t5_input_ids','t5_attention_mask', 'labels'])
-    test_ds.set_format(type="torch", columns=['id', 'canine_input_ids', 'canine_token_type_ids', 'canine_attention_mask', "t5_char_tokens",'t5_input_ids','t5_attention_mask', 'labels'])
+    train_ds.set_format(type="torch", columns=['id', 'canine_input_ids', 'canine_token_type_ids', 'canine_attention_mask', "bert_char_tokens",'bert_input_ids','bert_attention_mask', 'labels'])
+    test_ds.set_format(type="torch", columns=['id', 'canine_input_ids', 'canine_token_type_ids', 'canine_attention_mask', "bert_char_tokens",'bert_input_ids','bert_attention_mask', 'labels'])
 
-    TRAIN_BATCH_SIZE = 64
-    TEST_BATCH_SIZE = 64
-    LR = 5e-4
+    TRAIN_BATCH_SIZE = 32
+    TEST_BATCH_SIZE = 32
+    LR = 1e-3
     EPOCHS = 10
 
     train_dataloader = DataLoader(train_ds, batch_size=TRAIN_BATCH_SIZE, shuffle=True, drop_last=True)
     test_dataloader = DataLoader(test_ds, batch_size=TEST_BATCH_SIZE, drop_last=False)
 
-    checkpoint_callback = ModelCheckpoint(dirpath="checkpoints_cannie_bert", save_top_k=-1, monitor="validation_loss")
-    # model = CanineReviewClassifier(labels=utils.labels, id2label=utils.id2label, label2id=utils.label2id)
-    model = CanineReviewClassifier.load_from_checkpoint('checkpoints_epoch1/epoch=0-step=156250.ckpt', strict=True, labels=utils.labels, id2label=utils.id2label, label2id=utils.label2id)
-    wandb_logger = WandbLogger(name='dev_diacricitc_t5_cannie_small', project='Diacritic')
+    checkpoint_callback = ModelCheckpoint(dirpath="checkpoints_canine_bert", save_top_k=-1, monitor="validation_loss")
+    model = DiacCanineBertTokenClassification(num_labels=len(utils.labels))
+    # model = DiacCanineBertTokenClassification.load_from_checkpoint('checkpoints_epoch1/epoch=0-step=156250.ckpt', strict=True, num_labels=len(labels))
+    wandb_logger = WandbLogger(name='canine-c_bert-base', project='Diacritic')
     trainer = Trainer(accelerator='gpu',precision='bf16', amp_backend="native",devices=2, logger=wandb_logger, callbacks=[checkpoint_callback], max_epochs=EPOCHS, accumulate_grad_batches=1)
     trainer.fit(model, train_dataloader, test_dataloader)

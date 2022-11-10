@@ -3,7 +3,7 @@ import regex as re
 import numpy as np
 import torch
 import re
-from CanineForTokenClassificationCustom import CanineReviewClassifier
+from DiacCanineBertTokenClassification import CanineReviewClassifier
 from CanineT5 import CanieT5
 
 from transformers import CanineTokenizer
@@ -188,10 +188,10 @@ class Evaluator():
 
 def char2token(input_text):
     
-    t5_tokenizer = T5Tokenizer.from_pretrained('iliemihai/mt5-base-romanian-diacritics')
+    bert_tokenizer = T5Tokenizer.from_pretrained('iliemihai/mbert-base-romanian-diacritics')
     # tokenizer = CanineTokenizer.from_pretrained("google/canine-s")
     # initial_input_text = copy.deepcopy(input_text)
-    bert_tokenized_input = t5_tokenizer.tokenize(input_text)
+    bert_tokenized_input = bert_tokenizer.tokenize(input_text)
     # print(bert_tokenized_input)
     # print('_', bert_tokenized_input[0][0])
     # print(bert_tokenized_input[0].replace('▁',''))
@@ -221,9 +221,9 @@ def char2token(input_text):
     return result
 
 
-model = CanineReviewClassifier.load_from_checkpoint('../cannie_v4_checkpoints/epoch=3-step=3748.ckpt',strict=False)
+model = CanineReviewClassifier.load_from_checkpoint('../canine_v4_checkpoints/epoch=3-step=3748.ckpt',strict=False)
 model.eval()    
-def evaluate_cannie(gold):
+def evaluate_canine(gold):
     max_length = 256
 
     labels = [
@@ -296,7 +296,7 @@ def evaluate_cannie(gold):
                 print(f" {key:>30}: {metrics[key]}")
                 
 
-def evaluate_cannie_t5(gold):
+def evaluate_canine_bert(gold):
     max_length = 256
 
     labels = [
@@ -321,20 +321,20 @@ def evaluate_cannie_t5(gold):
     from transformers import CanineTokenizer
     from transformers import MT5ForConditionalGeneration, T5Tokenizer
     
-    t5_tokenizer = T5Tokenizer.from_pretrained('iliemihai/mt5-base-romanian-diacritics')
+    bert_tokenizer = T5Tokenizer.from_pretrained('iliemihai/mbert-base-romanian-diacritics')
     tokenizer = CanineTokenizer.from_pretrained("google/canine-s")
 
-    model = CanieT5.load_from_checkpoint('../checkpoints_t5/epoch=1-step=624.ckpt',strict=False)
+    model = CanieT5.load_from_checkpoint('../checkpoints_bert/epoch=1-step=624.ckpt',strict=False)
     # model = CanineReviewClassifier()
 
     text = gold
     # prepare text for the model
     encoding = tokenizer(text, return_tensors="pt")
     encoding = {"canine_" + key: value for key,value in encoding.items()}
-    t5_encoding = t5_tokenizer(text, return_tensors='pt')
-    t5_encoding = {"t5_" + key: value for key,value in t5_encoding.items()}
-    result = {**t5_encoding, **encoding}
-    result["t5_char_tokens"] = char2token(text)
+    bert_encoding = bert_tokenizer(text, return_tensors='pt')
+    bert_encoding = {"bert_" + key: value for key,value in bert_encoding.items()}
+    result = {**bert_encoding, **encoding}
+    result["bert_char_tokens"] = char2token(text)
 
     # forward pass
     outputs = model(**result)
@@ -381,12 +381,12 @@ def evaluate_cannie_t5(gold):
 # how to use
 if __name__ == "__main__":
     file1 = open('diac_hidden_1k.txt', 'r')
-    file2 = open('results_cannie_eval.txt', 'a')
+    file2 = open('results_canine_eval.txt', 'a')
     for line in file1.readlines():
-        file2.write(evaluate_cannie(Evaluator.remove_diacritics(line)))
+        file2.write(evaluate_canine(Evaluator.remove_diacritics(line)))
         file2.flush()
     file2.close()
     gold = "Fata are un măr în mână."
-    evaluate_cannie(gold)
-    evaluate_cannie_t5(gold)
+    evaluate_canine(gold)
+    evaluate_canine_bert(gold)
     
