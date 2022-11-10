@@ -9,7 +9,7 @@ from transformers import AdamW
 from transformers import CaninePreTrainedModel, \
     CanineModel, MT5ForConditionalGeneration
 from transformers.modeling_outputs import TokenClassifierOutput
-
+from torchmetrics import Accuracy
 from transformers import AutoModel
 
 LR = 1e-4
@@ -95,6 +95,9 @@ class CanineForTokenClassificationCustom(CaninePreTrainedModel):
 
         canine_out = canine_out.view(-1, canine_embed)
         t5_out = t5_out.view(-1, T5_embed)
+
+        canine_out = self.canine_dropout(canine_out)
+        t5_out = self.bert_dropout(t5_out)
         t5_char_tokens = t5_char_tokens + (torch.arange(BS, device="cuda") * seq_length_t5).unsqueeze(-1)
         char_t5_tokens = t5_out[t5_char_tokens.flatten()]
 
@@ -131,9 +134,9 @@ class CanineReviewClassifier(pl.LightningModule):
                                                                      num_labels=len(labels),
                                                                      id2label=id2label,
                                                                      label2id=label2id)
-    # def forward(self, input_ids, attention_mask, token_type_ids, labels=None):
+        self.train_metric = Accuracy(num_classes=len(labels))
+        self.val_metric = Accuracy(num_classes=len(labels))
     def forward(self, id, canine_input_ids, canine_token_type_ids, canine_attention_mask, t5_char_tokens,t5_input_ids, t5_attention_mask, labels=None):
-        # 'id', 'canine_input_ids', 'canine_token_type_ids', 'canine_attention_mask', "t5_char_tokens",'t5_input_ids','t5_attention_mask', 'labels'
         outputs = self.model(
             id=id, 
             canine_input_ids=canine_input_ids, 
@@ -152,34 +155,42 @@ class CanineReviewClassifier(pl.LightningModule):
         loss = outputs.loss
         logits = outputs.logits
 
-        predictions = logits.argmax(-1)
-        correct = (predictions == batch['labels']).sum().item()
-        accuracy = correct/batch['canine_input_ids'].shape[0]
+        return loss, logits
 
-        return loss, accuracy
+    def flatten_and_mask(self, outputs):
+        not_masked_samples = outputs["mask"].flatten().nonzero().squeeze()
+        preds = outputs['preds'].argmax(-1).flatten()[not_masked_samples]
+        target = outputs["target"].flatten()[not_masked_samples]
+        return preds, target
       
     def training_step(self, batch, batch_idx):
-        loss, accuracy = self.common_step(batch, batch_idx)     
-        # logs metrics for each training_step,
-        # and the average across the epoch
-        self.log("training_loss", loss)
-        self.log("training_accuracy", accuracy)
+        loss, logits = self.common_step(batch, batch_idx)
+        outputs = {'loss': loss, 'preds': logits, 'target': batch["labels"], 'mask':batch["canine_attention_mask"]}
+        preds, target = self.flatten_and_mask(outputs)
 
-        return loss
-    
+        self.log("train_loss", outputs["loss"],on_step=True, on_epoch=True)
+        self.log('train_acc', self.train_metric(preds, target), on_step=True, on_epoch=True)
+        return outputs
+
     def validation_step(self, batch, batch_idx):
-        loss, accuracy = self.common_step(batch, batch_idx)     
-        self.log("validation_loss", loss, on_epoch=True)
-        self.log("validation_accuracy", accuracy, on_epoch=True)
+        loss, logits = self.common_step(batch, batch_idx)
+        outputs = {'loss': loss, 'preds': logits, 'target': batch["labels"], 'mask': batch["canine_attention_mask"]}
+        preds, target = self.flatten_and_mask(outputs)
+        # update and log
 
-        return loss
+        self.log("validation_loss", outputs["loss"], on_step=True, on_epoch=True)
+        self.log('validation_acc', self.val_metric(preds, target), on_step=True, on_epoch=True)
+        return outputs
 
-    def test_step(self, batch, batch_idx):
-        loss, accuracy = self.common_step(batch, batch_idx)     
+    def training_epoch_end(self, outputs):
+        self.train_metric.reset()
 
-        return loss
+    def validation_epoch_end(self, outputs):
+        self.val_metric.reset()
 
     def configure_optimizers(self):
         # We could make the optimizer more fancy by adding a scheduler and specifying which parameters do
         # not require weight_decay but just using AdamW out-of-the-box works fine
         return AdamW(self.parameters(), lr=LR)
+
+
