@@ -24,15 +24,15 @@ class DiacCanineBertTokenClassification(pl.LightningModule):
         self.canine = AutoModel.from_pretrained('google/canine-c')
         self.bert = AutoModel.from_pretrained("readerbench/RoBERT-base")
 
-        # for param in self.canine.parameters():
-        #     param.requires_grad = True
-        # for param in self.bert.parameters():
-        #     param.requires_grad = True
+        for param in self.canine.parameters():
+            param.requires_grad = True
+        for param in self.bert.parameters():
+            param.requires_grad = True
 
         self.bert_dropout = nn.Dropout(p=0.2)
         self.canine_dropout = nn.Dropout(p=0.2)
         encoder_layer = nn.TransformerEncoderLayer(d_model=self.canine.config.hidden_size + self.bert.encoder.config.hidden_size, nhead=4)
-        self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=6)
+        self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=2) # TODO Try to get this to 4 or 6 and fit batch size of 64
         self.classifier_final = nn.Linear(self.canine.config.hidden_size + self.bert.encoder.config.hidden_size, self.num_labels)
 
         # Initialize weights and apply final processing
@@ -127,17 +127,20 @@ class DiacCanineBertTokenClassification(pl.LightningModule):
 
         self.log("train_loss", outputs["loss"],on_step=True, on_epoch=True)
         self.log('train_acc', self.train_metric(preds, target), on_step=True, on_epoch=True)
-        return outputs
+        
+        # return outputs
+        return {'loss': loss}
 
     def validation_step(self, batch, batch_idx):
         loss, logits = self.common_step(batch, batch_idx)
         outputs = {'loss': loss, 'preds': logits, 'target': batch["labels"], 'mask': batch["canine_attention_mask"]}
         preds, target = self.flatten_and_mask(outputs)
-        # update and log
 
         self.log("validation_loss", outputs["loss"], on_step=True, on_epoch=True)
         self.log('validation_acc', self.val_metric(preds, target), on_step=True, on_epoch=True)
-        return outputs
+        
+        # return outputs
+        return {'loss': loss}
 
     def training_epoch_end(self, outputs):
         self.train_metric.reset()
