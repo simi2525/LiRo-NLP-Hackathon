@@ -10,6 +10,7 @@ __pycache__/
 *.so
 *.bin
 wandb/
+tbl.wordform.ro
 
 *.ckpt
 # Distribution / packaging

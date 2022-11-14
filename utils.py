@@ -15,8 +15,11 @@ class PreprocessingUtils():
         ]
 
         self.chars_with_virgula = ['ș','ț','Ș','Ț']
+        self.chars_can_have_virgula = ['s','t','S','T']
         self.chars_with_caciulita = ['â','î','Â','Î']
+        self.chars_can_have_caciulita = ['a','i','A','I']
         self.chars_with_cupa = ['ă','Ă']
+        self.chars_can_have_cupa = ['a','A']
         self.chars_can_have_diacritics = ['a','t','i','s', 'A', 'T', 'I', 'S']
         self.chars_with_diacritics = ['ă','â','î','ș', 'ț', 'Ă', 'Â', 'Î', 'Ș', 'Ț']
 
@@ -26,7 +29,24 @@ class PreprocessingUtils():
         self.canine_tokenizer = AutoTokenizer.from_pretrained("google/canine-c")
         self.bert_tokenizer = AutoTokenizer.from_pretrained("readerbench/RoBERT-base")
 
-
+    def char_label2char(self, c, l):
+        if c in self.chars_with_diacritics:
+            return c
+        if c not in self.chars_can_have_diacritics:
+            return c
+        
+        
+        if l == self.label2id['virgula'] and c in self.chars_can_have_virgula:
+            return self.chars_with_virgula[self.chars_can_have_virgula.index(c)]
+    
+        if l == self.label2id['caciulita'] and c in self.chars_can_have_caciulita:
+            return self.chars_with_caciulita[self.chars_can_have_caciulita.index(c)]
+        
+        if l == self.label2id['cupa'] and c in self.chars_can_have_cupa:
+            return self.chars_with_cupa[self.chars_can_have_cupa.index(c)]
+        
+        return c
+        
 
     def preprocess_all(self, batch):
         batch = self.preprocess_batch_group_1(batch)
