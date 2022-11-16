@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 import torch.utils.checkpoint
 from torch.nn import CrossEntropyLoss
-from transformers import AdamW
+from torch.optim import AdamW
 from transformers import CaninePreTrainedModel, \
     CanineModel, CanineConfig
 from transformers.modeling_outputs import TokenClassifierOutput
@@ -128,11 +128,11 @@ class DiacCanineBertTokenClassification(pl.LightningModule):
         outputs = {'loss': loss, 'preds': logits, 'target': batch["labels"], 'mask':batch["canine_attention_mask"]}
         preds, target = self.flatten_and_mask(outputs)
 
-        self.log("train_loss", outputs["loss"],on_step=True, on_epoch=True, sync_dist=True)
-        self.log('train_acc', self.train_metric(preds, target), on_step=True, on_epoch=True, sync_dist=True)
+        self.log("train_loss", outputs["loss"],on_step=True, on_epoch=True)
+        self.log('train_acc', self.train_metric(preds, target), on_step=True, on_epoch=True)
         accs = self.train_metric_per_label(preds, target)
         for i, acc in enumerate(accs): # accs : accuracy per class
-              self.log(f'train_acc_class_{i}', acc, on_step=True, on_epoch=True, sync_dist=True)
+              self.log(f'train_acc_class_{i}', acc, on_step=True, on_epoch=True)
         
         return {'loss': loss}
 

@@ -17,7 +17,7 @@ if __name__ == '__main__':
 
 
     dataset = load_dataset("dumitrescustefan/diacritic")
-    dataset["train"] = dataset["train"].select(list(range(2000000)))
+    dataset["train"] = dataset["train"].select(list(range(3000000)))
     dataset["validation"] = dataset["validation"]#.select(list(range(1000)))
     train_ds = dataset
     train_ds = train_ds.rename_column("text", "labels")
