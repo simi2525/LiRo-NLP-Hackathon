@@ -17,7 +17,7 @@ if __name__ == '__main__':
 
 
     dataset = load_dataset("dumitrescustefan/diacritic")
-    dataset["train"] = dataset["train"].select(list(range(20000000)))
+    dataset["train"] = dataset["train"].select(list(range(1000000)))
     dataset["validation"] = dataset["validation"]#.select(list(range(1000)))
     train_ds = dataset
     train_ds = train_ds.rename_column("text", "labels")
@@ -54,8 +54,9 @@ if __name__ == '__main__':
     test_dataloader = DataLoader(test_ds, batch_size=TEST_BATCH_SIZE, drop_last=False)
 
     checkpoint_callback = ModelCheckpoint(dirpath="checkpoints_canine_bert", save_top_k=-1, monitor="validation_loss")
-    # model = DiacCanineBertTokenClassification(num_labels=len(utils.labels))
-    model = DiacCanineBertTokenClassification.load_from_checkpoint('checkpoints2/epoch=1-step=156250.ckpt', strict=True, num_labels=len(utils.labels))
+    model = DiacCanineBertTokenClassification(num_labels=len(utils.labels), per_label_weights=per_label_weights, lr=LR)
+    # model = DiacCanineBertTokenClassification.load_from_checkpoint('checkpoints2/epoch=1-step=156250.ckpt', strict=True, num_labels=len(utils.labels), per_label_weights=per_label_weights, lr=LR)
     wandb_logger = WandbLogger(name='canine-c_bert-base', project='Diacritic')
-    trainer = Trainer(accelerator='gpu',precision='bf16', amp_backend="native",devices=2, logger=wandb_logger, callbacks=[checkpoint_callback], max_epochs=EPOCHS, accumulate_grad_batches=8)
+    trainer = Trainer(accelerator='gpu',precision='bf16', amp_backend="native",devices=2, logger=wandb_logger, callbacks=[checkpoint_callback], max_epochs=EPOCHS, accumulate_grad_batches=1)
     trainer.fit(model, train_dataloader, test_dataloader)
+    # trainer.fit(model, train_dataloader, test_dataloader, ckpt_path='checkpoints2/epoch=1-step=156250.ckpt')

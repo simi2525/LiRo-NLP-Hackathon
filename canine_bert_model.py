@@ -12,22 +12,22 @@ from transformers.modeling_outputs import TokenClassifierOutput
 from torchmetrics import Accuracy
 from transformers import AutoModel
 
-LR = 1e-4
-
 PRETRAINED_MODELS_CACHE = None
 
 class DiacCanineBertTokenClassification(pl.LightningModule):
-    def __init__(self, num_labels):
+    def __init__(self, num_labels, per_label_weights, lr=1e-4):
         super().__init__()
         self.num_labels = num_labels
+        self.per_label_weights = per_label_weights
+        self.lr = lr
 
         self.canine = AutoModel.from_pretrained('google/canine-c')
         self.bert = AutoModel.from_pretrained("readerbench/RoBERT-base")
 
-        for param in self.canine.parameters():
-            param.requires_grad = True
-        for param in self.bert.parameters():
-            param.requires_grad = True
+        # for param in self.canine.parameters():
+        #     param.requires_grad = True
+        # for param in self.bert.parameters():
+        #     param.requires_grad = True
 
         self.bert_dropout = nn.Dropout(p=0.2)
         self.canine_dropout = nn.Dropout(p=0.2)
@@ -95,7 +95,7 @@ class DiacCanineBertTokenClassification(pl.LightningModule):
 
         logits = self.classifier_final(sequence_output)
 
-        loss_fct = CrossEntropyLoss(reduction='none').to(self.device)
+        loss_fct = CrossEntropyLoss(weight=torch.tensor(self.per_label_weights),reduction='none').to(self.device)
         loss = loss_fct(logits.view(-1, self.num_labels), labels.view(-1))
         loss = loss * canine_attention_mask.flatten()
         loss = loss.sum() / (canine_attention_mask.sum() + 1e-15)
@@ -151,4 +151,4 @@ class DiacCanineBertTokenClassification(pl.LightningModule):
     def configure_optimizers(self):
         # We could make the optimizer more fancy by adding a scheduler and specifying which parameters do
         # not require weight_decay but just using AdamW out-of-the-box works fine
-        return AdamW(self.parameters(), lr=LR)
+        return AdamW(self.parameters(), lr=self.lr)

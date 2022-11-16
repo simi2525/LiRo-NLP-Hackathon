@@ -156,9 +156,10 @@ class PreprocessingUtils():
         return examples
     
     def char2token(self,input_text):
+        input_text = input_text.lower()
         bert_tokenized_input = self.bert_tokenizer.tokenize(input_text)
-        bert_tokenized_input = [b.replace("▁", '') for b in bert_tokenized_input]
 
+        bert_tokenized_input = [b.replace("#", '') for b in bert_tokenized_input]
         token_idx = [[i] * len(tok) for i,tok in enumerate(bert_tokenized_input)]
         token_idx = [item for sublist in token_idx for item in sublist]
         bert_tokenized_input = [item for sublist in bert_tokenized_input for item in sublist]
@@ -179,4 +180,5 @@ class PreprocessingUtils():
                 if result[j] == -1:
                     j = i-1
                 result[i] = result[j]
+                
         return result
