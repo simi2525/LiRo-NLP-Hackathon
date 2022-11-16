@@ -5,21 +5,21 @@ import torch
 import torch.nn as nn
 import torch.utils.checkpoint
 from torch.nn import CrossEntropyLoss
-from transformers import AdamW
+from torch.optim import AdamW
 from transformers import CaninePreTrainedModel, \
     CanineModel, CanineConfig
 from transformers.modeling_outputs import TokenClassifierOutput
 from torchmetrics import Accuracy
 from transformers import AutoModel
 
-LR = 1e-4
-
 PRETRAINED_MODELS_CACHE = None
 
 class DiacCanineBertTokenClassification(pl.LightningModule):
-    def __init__(self, num_labels):
+    def __init__(self, num_labels, per_label_weights, lr=1e-4):
         super().__init__()
         self.num_labels = num_labels
+        self.per_label_weights = per_label_weights
+        self.lr = lr
 
         self.canine = AutoModel.from_pretrained('google/canine-c')
         self.bert = AutoModel.from_pretrained("readerbench/RoBERT-base")
@@ -41,7 +41,10 @@ class DiacCanineBertTokenClassification(pl.LightningModule):
         
         
         self.train_metric = Accuracy(num_classes=self.num_labels)
+        self.train_metric_per_label = Accuracy(num_classes=self.num_labels, average='none')
+        
         self.val_metric = Accuracy(num_classes=self.num_labels)
+        self.val_metric_per_label = Accuracy(num_classes=self.num_labels, average='none')
 
     def forward(
             self,
@@ -95,7 +98,7 @@ class DiacCanineBertTokenClassification(pl.LightningModule):
 
         logits = self.classifier_final(sequence_output)
 
-        loss_fct = CrossEntropyLoss(reduction='none').to(self.device)
+        loss_fct = CrossEntropyLoss(weight=torch.tensor(self.per_label_weights),reduction='none').to(self.device)
         loss = loss_fct(logits.view(-1, self.num_labels), labels.view(-1))
         loss = loss * canine_attention_mask.flatten()
         loss = loss.sum() / (canine_attention_mask.sum() + 1e-15)
@@ -127,8 +130,10 @@ class DiacCanineBertTokenClassification(pl.LightningModule):
 
         self.log("train_loss", outputs["loss"],on_step=True, on_epoch=True)
         self.log('train_acc', self.train_metric(preds, target), on_step=True, on_epoch=True)
+        accs = self.train_metric_per_label(preds, target)
+        for i, acc in enumerate(accs): # accs : accuracy per class
+              self.log(f'train_acc_class_{i}', acc, on_step=True, on_epoch=True)
         
-        # return outputs
         return {'loss': loss}
 
     def validation_step(self, batch, batch_idx):
@@ -136,19 +141,23 @@ class DiacCanineBertTokenClassification(pl.LightningModule):
         outputs = {'loss': loss, 'preds': logits, 'target': batch["labels"], 'mask': batch["canine_attention_mask"]}
         preds, target = self.flatten_and_mask(outputs)
 
-        self.log("validation_loss", outputs["loss"], on_step=True, on_epoch=True)
-        self.log('validation_acc', self.val_metric(preds, target), on_step=True, on_epoch=True)
+        self.log("validation_loss", outputs["loss"], on_step=True, on_epoch=True, sync_dist=True)
+        self.log('validation_acc', self.val_metric(preds, target), on_step=True, on_epoch=True, sync_dist=True)
+        accs = self.val_metric_per_label(preds, target)
+        for i, acc in enumerate(accs): # accs : accuracy per class
+              self.log(f'validation_acc_class_{i}', acc, on_step=True, on_epoch=True, sync_dist=True)
         
-        # return outputs
         return {'loss': loss}
 
     def training_epoch_end(self, outputs):
         self.train_metric.reset()
+        self.train_metric_per_label.reset()
 
     def validation_epoch_end(self, outputs):
         self.val_metric.reset()
+        self.val_metric_per_label.reset()
 
     def configure_optimizers(self):
         # We could make the optimizer more fancy by adding a scheduler and specifying which parameters do
         # not require weight_decay but just using AdamW out-of-the-box works fine
-        return AdamW(self.parameters(), lr=LR)
+        return AdamW(self.parameters(), lr=self.lr)
