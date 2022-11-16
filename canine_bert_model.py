@@ -32,7 +32,7 @@ class DiacCanineBertTokenClassification(pl.LightningModule):
         self.bert_dropout = nn.Dropout(p=0.2)
         self.canine_dropout = nn.Dropout(p=0.2)
         encoder_layer = nn.TransformerEncoderLayer(d_model=self.canine.config.hidden_size + self.bert.encoder.config.hidden_size, nhead=4)
-        self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=6) # TODO Try to get this to 4 or 6 and fit batch size of 64
+        self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=2) # TODO Try to get this to 4 or 6 and fit batch size of 64
         self.classifier_final = nn.Linear(self.canine.config.hidden_size + self.bert.encoder.config.hidden_size, self.num_labels)
 
         # Initialize weights and apply final processing

@@ -45,8 +45,8 @@ if __name__ == '__main__':
     train_ds.set_format(type="torch", columns=['id', 'canine_input_ids', 'canine_token_type_ids', 'canine_attention_mask', "bert_char_tokens",'bert_input_ids','bert_attention_mask', 'labels'])
     test_ds.set_format(type="torch", columns=['id', 'canine_input_ids', 'canine_token_type_ids', 'canine_attention_mask', "bert_char_tokens",'bert_input_ids','bert_attention_mask', 'labels'])
 
-    TRAIN_BATCH_SIZE = 32
-    TEST_BATCH_SIZE = 32
+    TRAIN_BATCH_SIZE = 64
+    TEST_BATCH_SIZE = 64
     LR = 1e-3
     EPOCHS = 100
 
@@ -57,6 +57,6 @@ if __name__ == '__main__':
     model = DiacCanineBertTokenClassification(num_labels=len(utils.labels), per_label_weights=per_label_weights, lr=LR)
     # model = DiacCanineBertTokenClassification.load_from_checkpoint('checkpoints2/epoch=1-step=156250.ckpt', strict=True, num_labels=len(utils.labels), per_label_weights=per_label_weights, lr=LR)
     wandb_logger = WandbLogger(name='canine-c_bert-base', project='Diacritic')
-    trainer = Trainer(accelerator='gpu',precision='bf16', amp_backend="native",devices=2, logger=wandb_logger, callbacks=[checkpoint_callback], max_epochs=EPOCHS, accumulate_grad_batches=16)
+    trainer = Trainer(accelerator='gpu',precision='bf16', amp_backend="native",devices=2, logger=wandb_logger, callbacks=[checkpoint_callback], max_epochs=EPOCHS, accumulate_grad_batches=8)
     trainer.fit(model, train_dataloader, test_dataloader)
     # trainer.fit(model, train_dataloader, test_dataloader, ckpt_path='checkpoints2/epoch=1-step=156250.ckpt')
