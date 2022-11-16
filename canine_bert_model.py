@@ -32,7 +32,7 @@ class DiacCanineBertTokenClassification(pl.LightningModule):
         self.bert_dropout = nn.Dropout(p=0.2)
         self.canine_dropout = nn.Dropout(p=0.2)
         encoder_layer = nn.TransformerEncoderLayer(d_model=self.canine.config.hidden_size + self.bert.encoder.config.hidden_size, nhead=4)
-        self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=2) # TODO Try to get this to 4 or 6 and fit batch size of 64
+        self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=6) # TODO Try to get this to 4 or 6 and fit batch size of 64
         self.classifier_final = nn.Linear(self.canine.config.hidden_size + self.bert.encoder.config.hidden_size, self.num_labels)
 
         # Initialize weights and apply final processing
@@ -41,7 +41,10 @@ class DiacCanineBertTokenClassification(pl.LightningModule):
         
         
         self.train_metric = Accuracy(num_classes=self.num_labels)
+        self.train_metric_per_label = Accuracy(num_classes=self.num_labels, average='none')
+        
         self.val_metric = Accuracy(num_classes=self.num_labels)
+        self.val_metric_per_label = Accuracy(num_classes=self.num_labels, average='none')
 
     def forward(
             self,
@@ -125,10 +128,12 @@ class DiacCanineBertTokenClassification(pl.LightningModule):
         outputs = {'loss': loss, 'preds': logits, 'target': batch["labels"], 'mask':batch["canine_attention_mask"]}
         preds, target = self.flatten_and_mask(outputs)
 
-        self.log("train_loss", outputs["loss"],on_step=True, on_epoch=True)
-        self.log('train_acc', self.train_metric(preds, target), on_step=True, on_epoch=True)
+        self.log("train_loss", outputs["loss"],on_step=True, on_epoch=True, sync_dist=True)
+        self.log('train_acc', self.train_metric(preds, target), on_step=True, on_epoch=True, sync_dist=True)
+        accs = self.train_metric_per_label(preds, target)
+        for i, acc in enumerate(accs): # accs : accuracy per class
+              self.log(f'train_acc_class_{i}', acc, on_step=True, on_epoch=True, sync_dist=True)
         
-        # return outputs
         return {'loss': loss}
 
     def validation_step(self, batch, batch_idx):
@@ -136,17 +141,21 @@ class DiacCanineBertTokenClassification(pl.LightningModule):
         outputs = {'loss': loss, 'preds': logits, 'target': batch["labels"], 'mask': batch["canine_attention_mask"]}
         preds, target = self.flatten_and_mask(outputs)
 
-        self.log("validation_loss", outputs["loss"], on_step=True, on_epoch=True)
-        self.log('validation_acc', self.val_metric(preds, target), on_step=True, on_epoch=True)
+        self.log("validation_loss", outputs["loss"], on_step=True, on_epoch=True, sync_dist=True)
+        self.log('validation_acc', self.val_metric(preds, target), on_step=True, on_epoch=True, sync_dist=True)
+        accs = self.val_metric_per_label(preds, target)
+        for i, acc in enumerate(accs): # accs : accuracy per class
+              self.log(f'validation_acc_class_{i}', acc, on_step=True, on_epoch=True, sync_dist=True)
         
-        # return outputs
         return {'loss': loss}
 
     def training_epoch_end(self, outputs):
         self.train_metric.reset()
+        self.train_metric_per_label.reset()
 
     def validation_epoch_end(self, outputs):
         self.val_metric.reset()
+        self.val_metric_per_label.reset()
 
     def configure_optimizers(self):
         # We could make the optimizer more fancy by adding a scheduler and specifying which parameters do
