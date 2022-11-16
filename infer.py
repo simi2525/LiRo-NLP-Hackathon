@@ -25,7 +25,7 @@ hidden_ds = hidden_ds.map(utils.preprocess_all, batched=True, load_from_cache_fi
 hidden_ds.set_format(type="torch", columns=['canine_input_ids', 'canine_token_type_ids', 'canine_attention_mask', "bert_char_tokens",'bert_input_ids','bert_attention_mask', 'labels'])
 
 # model = DiacCanineBertTokenClassification(num_labels=len(utils.labels)).to('cpu')
-model = DiacCanineBertTokenClassification.load_from_checkpoint('checkpoints/epoch=1-step=156250.ckpt', num_labels=len(utils.labels)).to('cpu')
+model = DiacCanineBertTokenClassification.load_from_checkpoint('checkpoints/epoch=1-step=156250.ckpt', num_labels=len(utils.labels), strict=True).to('cpu')
 model.eval()
 
 

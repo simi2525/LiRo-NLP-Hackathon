@@ -24,10 +24,10 @@ class DiacCanineBertTokenClassification(pl.LightningModule):
         self.canine = AutoModel.from_pretrained('google/canine-c')
         self.bert = AutoModel.from_pretrained("readerbench/RoBERT-base")
 
-        for param in self.canine.parameters():
-            param.requires_grad = True
-        for param in self.bert.parameters():
-            param.requires_grad = True
+        # for param in self.canine.parameters():
+        #     param.requires_grad = True
+        # for param in self.bert.parameters():
+        #     param.requires_grad = True
 
         self.bert_dropout = nn.Dropout(p=0.2)
         self.canine_dropout = nn.Dropout(p=0.2)
