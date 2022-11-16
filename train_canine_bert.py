@@ -50,8 +50,8 @@ if __name__ == '__main__':
     LR = 1e-3
     EPOCHS = 100
 
-    train_dataloader = DataLoader(train_ds, batch_size=TRAIN_BATCH_SIZE, shuffle=True, drop_last=True)
-    test_dataloader = DataLoader(test_ds, batch_size=TEST_BATCH_SIZE, drop_last=False)
+    train_dataloader = DataLoader(train_ds, batch_size=TRAIN_BATCH_SIZE, shuffle=True, drop_last=True, num_workers=4, persistent_workers=True)
+    test_dataloader = DataLoader(test_ds, batch_size=TEST_BATCH_SIZE, drop_last=False, num_workers=4, persistent_workers=True)
 
     checkpoint_callback = ModelCheckpoint(dirpath="checkpoints_canine_bert", save_top_k=-1, monitor="validation_loss")
     model = DiacCanineBertTokenClassification(num_labels=len(utils.labels), per_label_weights=per_label_weights, lr=LR)
