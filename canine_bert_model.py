@@ -86,7 +86,7 @@ class DiacCanineBertTokenClassification(pl.LightningModule):
 
         canine_out = self.canine_dropout(canine_out)
         bert_out = self.bert_dropout(bert_out)
-        bert_char_tokens = bert_char_tokens + (torch.arange(BS, device="cuda") * seq_length_bert).unsqueeze(-1)
+        bert_char_tokens = bert_char_tokens + (torch.arange(BS, device=self.device) * seq_length_bert).unsqueeze(-1)
         char_bert_tokens = bert_out[bert_char_tokens.flatten()]
 
         sequence_output = torch.concat((canine_out, char_bert_tokens), dim=-1)
@@ -95,7 +95,7 @@ class DiacCanineBertTokenClassification(pl.LightningModule):
 
         logits = self.classifier_final(sequence_output)
 
-        loss_fct = CrossEntropyLoss(reduction='none').cuda()
+        loss_fct = CrossEntropyLoss(reduction='none').to(self.device)
         loss = loss_fct(logits.view(-1, self.num_labels), labels.view(-1))
         loss = loss * canine_attention_mask.flatten()
         loss = loss.sum() / (canine_attention_mask.sum() + 1e-15)
