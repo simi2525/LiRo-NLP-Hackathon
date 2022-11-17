@@ -19,6 +19,8 @@ hidden_text = file1 = open('diac_hidden_1k.txt', 'r',encoding='utf-8').readlines
 hidden_ds = {"labels": []}
 
 punctuations = '[\?!,\.:;\s]'
+splitting_points = []
+splitting_points_space = []
 aux_hidden_text = []
 for line in hidden_text:
     i = 0
@@ -26,13 +28,25 @@ for line in hidden_text:
         aux_line = line[i:i+max_length-2]
         if len(line)-i > max_length-2 and not ' ' in line[i+max_length-3:i+max_length-1]:
             m = re.search(punctuations, aux_line)
-            last_punctuation = [i.end() for i in re.finditer(punctuations,aux_line)][-1]
+            aux_index_position = [i.end() for i in re.finditer(punctuations,aux_line)]
+            if len(aux_index_position) > 0:
+                last_punctuation = aux_index_position[-1]
+            else:
+                last_punctuation = max_length - 2
+                
             aux_line = aux_line[:last_punctuation]
             i += last_punctuation
         else:
             i += max_length-2
+        
         hidden_ds["labels"].append(aux_line.strip())
         aux_hidden_text.append(aux_line.strip())
+        
+        if i<len(line):
+            splitting_points.append(len(hidden_ds["labels"])-1)
+            if line[i-1] == ' ':
+                splitting_points_space.append(len(hidden_ds["labels"])-1)
+            
 hidden_text = aux_hidden_text
 
 hidden_ds = Dataset.from_dict(hidden_ds)
@@ -62,7 +76,13 @@ for i, line in enumerate(hidden_text):
     result = ''
     for j, c in enumerate(line.strip()):
         result+=utils.char_label2char(c, classes[j].item())
-    result_file.write(result+'\n')
+    if i in splitting_points:
+        if i in splitting_points_space:
+            result_file.write(result + ' ')
+        else:
+            result_file.write(result)
+    else:
+        result_file.write(result+'\n')
     result_file.flush()
 
 result_file.close()
