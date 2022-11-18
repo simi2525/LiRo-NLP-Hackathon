@@ -15,9 +15,11 @@ from transformers import AutoModel
 PRETRAINED_MODELS_CACHE = None
 
 class DiacCanineBertTokenClassification(pl.LightningModule):
-    def __init__(self, num_labels, per_label_weights, lr=1e-4):
+    def __init__(self, num_labels, per_label_weights=None, lr=1e-4):
         super().__init__()
         self.num_labels = num_labels
+        if per_label_weights is None:
+            per_label_weights = torch.ones(num_labels)
         self.per_label_weights = per_label_weights
         self.lr = lr
 

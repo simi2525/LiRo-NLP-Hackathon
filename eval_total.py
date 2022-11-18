@@ -178,11 +178,11 @@ class Evaluator():
 if __name__ == "__main__":
 
     # example strings
-    gold = "„Fata are un măr în mână."
-    prediction = "„Fată are un mar în mâna."
+    # gold = "„Fata are un măr în mână."
+    # prediction = "„Fată are un mar în mâna."
     
-    # gold = file1 = open('diac_hidden_1k.txt', 'r').read()
-    # prediction = file2 = open('results_cannie_eval.txt', 'r').read()
+    gold = file1 = open('diac_hidden_1k.txt', 'r', encoding='utf-8').read()
+    prediction = file2 = open('diac_hidden_1k_results.txt', 'r', encoding='utf-8').read()
 
     # init evaluator class
     evaluator = Evaluator()
