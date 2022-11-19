@@ -26,10 +26,10 @@ class DiacCanineBertTokenClassification(pl.LightningModule):
         self.canine = AutoModel.from_pretrained('google/canine-c')
         self.bert = AutoModel.from_pretrained("readerbench/RoBERT-base")
 
-        # self.bert_dropout = nn.Dropout(p=0.2)
-        # self.canine_dropout = nn.Dropout(p=0.2)
-        self.bert_dropout = nn.Dropout(p=0.0)
-        self.canine_dropout = nn.Dropout(p=0.0)
+        self.bert_dropout = nn.Dropout(p=0.2)
+        self.canine_dropout = nn.Dropout(p=0.2)
+        # self.bert_dropout = nn.Dropout(p=0.0)
+        # self.canine_dropout = nn.Dropout(p=0.0)
         encoder_layer = nn.TransformerEncoderLayer(d_model=self.canine.config.hidden_size + self.bert.encoder.config.hidden_size, nhead=4)
         self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=2) # TODO Try to get this to 4 or 6 and fit batch size of 64
         self.classifier_final = nn.Linear(self.canine.config.hidden_size + self.bert.encoder.config.hidden_size, self.num_labels)
@@ -97,7 +97,7 @@ class DiacCanineBertTokenClassification(pl.LightningModule):
 
         logits = self.classifier_final(sequence_output)
 
-        loss_fct = CrossEntropyLoss(weight=torch.tensor(self.per_label_weights),reduction='none').to(self.device)
+        loss_fct = CrossEntropyLoss(weight=torch.tensor(self.per_label_weights).float(),reduction='none').to(self.device)
         loss = loss_fct(logits.view(-1, self.num_labels), labels.view(-1))
         loss = loss * canine_attention_mask.flatten()
         loss = loss.sum() / (canine_attention_mask.sum() + 1e-15)
