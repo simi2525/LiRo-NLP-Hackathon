@@ -37,7 +37,6 @@ if __name__ == '__main__':
     per_label_weights = [n_samples / (c * n_samples) for c in per_label_counts]
     per_label_weights = [w * 1/max(per_label_weights) for w in per_label_weights]
     print("Label weights", per_label_weights)
-    exit()
     # per_label_weights = [1.0, 1.0, 1.0, 1.0]
 
     test_ds = train_ds["validation"]
