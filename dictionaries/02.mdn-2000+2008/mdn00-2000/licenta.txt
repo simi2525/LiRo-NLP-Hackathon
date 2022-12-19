@@ -1,0 +1,5 @@
+Copyright © 2004-2019 dexonline (https://dexonline.ro)
+
+https://www.gnu.org/licenses/gpl-3.0.en.html
+
+Dicționarele dexonline.ro în format StarDict sunt libere; le puteți redistribui și/sau modifica în conformitate cu termenii Licenței Publice Generale GNU așa cum este ea publicată de Free Software Foundation; fie versiunea 3 a Licenței, fie (la latitudinea dumneavoastră) orice versiune ulterioară. Dicționarele sunt distribuite cu speranța că vă vor fi utile, dar FĂRĂ NICIO GARANȚIE, chiar fără garanția implicită de vandabilitate sau conformitate unui anumit scop. Citiți Licența Publică Generală GNU pentru detalii. Puteți găsi o copie a Licenței Publice Generale GNU în fișierul gpl.txt.

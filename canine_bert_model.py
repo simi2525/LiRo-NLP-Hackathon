@@ -31,19 +31,23 @@ class DiacCanineBertTokenClassification(pl.LightningModule):
         # self.bert_dropout = nn.Dropout(p=0.0)
         # self.canine_dropout = nn.Dropout(p=0.0)
         encoder_layer = nn.TransformerEncoderLayer(d_model=self.canine.config.hidden_size + self.bert.encoder.config.hidden_size, nhead=4)
-        self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=2) # TODO Try to get this to 4 or 6 and fit batch size of 64
+        self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=6) # TODO Try to get this to 4 or 6 and fit batch size of 64
         self.classifier_final = nn.Linear(self.canine.config.hidden_size + self.bert.encoder.config.hidden_size, self.num_labels)
 
         # Initialize weights and apply final processing
         self.canine.post_init()
         self.bert.post_init()
         
+        self.train_metric = Accuracy(num_classes=self.num_labels, task='multiclass')
+        self.train_metric_per_label = Accuracy(num_classes=self.num_labels, average='none', task='multiclass')
         
-        self.train_metric = Accuracy(num_classes=self.num_labels)
-        self.train_metric_per_label = Accuracy(num_classes=self.num_labels, average='none')
-        
-        self.val_metric = Accuracy(num_classes=self.num_labels)
-        self.val_metric_per_label = Accuracy(num_classes=self.num_labels, average='none')
+        self.val_metric = Accuracy(num_classes=self.num_labels, task='multiclass')
+        self.val_metric_per_label = Accuracy(num_classes=self.num_labels, average='none', task='multiclass')
+
+    def on_before_optimizer_step(self, optimizer, optimizer_idx):
+        for param in self.bert.parameters():
+            if param.grad is not None:
+                param.grad /= 3.34
 
     def forward(
             self,

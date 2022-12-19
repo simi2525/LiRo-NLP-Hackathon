@@ -4,8 +4,18 @@ import re
 from canine_bert_model import DiacCanineBertTokenClassification
 from utils import PreprocessingUtils
 from eval_total import Evaluator
+from pystardict import Dictionary
+import os
 
 from datasets import load_dataset, Dataset
+
+dicts_dir = "dictionaries/"
+dicts = []
+dicts.append(Dictionary(os.path.join(dicts_dir, '01.dex09-2009','dex09-2009')))
+dicts.append(Dictionary(os.path.join(dicts_dir, '02.mdn-2000+2008/mdn00-2000','mdn00-2000')))
+dicts.append(Dictionary(os.path.join(dicts_dir, '02.mdn-2000+2008/mdn08-2008','mdn08-2008')))
+dicts.append(Dictionary(os.path.join(dicts_dir, '03.dlrlc-1955-1957','dlrlc-1955-1957')))
+dicts.append(Dictionary(os.path.join(dicts_dir, '04.dulr6-1929','dulr6-1929')))
 
 if __name__ == '__main__':
 
@@ -56,8 +66,7 @@ if __name__ == '__main__':
     hidden_ds.set_format(type="torch", columns=['canine_input_ids', 'canine_token_type_ids', 'canine_attention_mask', "bert_char_tokens",'bert_input_ids','bert_attention_mask', 'labels'])
 
     # model = DiacCanineBertTokenClassification(num_labels=len(utils.labels)).to(device)
-    # model = DiacCanineBertTokenClassification.load_from_checkpoint('checkpoints1/epoch=0-step=23437.ckpt', num_labels=len(utils.labels), strict=True).to(device)
-    model = DiacCanineBertTokenClassification.load_from_checkpoint('checkpoints2/epoch=1-step=179687.ckpt', num_labels=len(utils.labels), strict=True).to(device)
+    model = DiacCanineBertTokenClassification.load_from_checkpoint('checkpoints2/epoch=2-step=117189.ckpt', num_labels=len(utils.labels), strict=True).to(device)
     model.eval()
 
 
@@ -86,7 +95,24 @@ if __name__ == '__main__':
         result = ''
         for j, c in enumerate(line.strip()):
             result+=utils.char_label2char(c, classes[j])
-            
+        
+        old_string = line.strip().split(' ')
+        new_string = result.split(' ')
+        for word_position,(old,new) in enumerate(zip(old_string, new_string)):
+            if old != new:
+                appears_old = []
+                for d in dicts:
+                    if old.lower() in d:
+                        appears_old.append(d[old.lower()])
+                appears_new = []
+                for d in dicts:
+                    if new.lower() in d:
+                        appears_new.append(d[new.lower()])
+                if len(appears_old) > 0 and len(appears_new) == 0:
+                    new_string[word_position] = old_string[word_position]
+        line = ' '.join(old_string)
+        result = ' '.join(new_string)        
+        
         if i in splitting_points:
             if i in splitting_points_space:
                 return result + ' ' 

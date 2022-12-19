@@ -28,6 +28,7 @@ class PreprocessingUtils():
         
         self.canine_tokenizer = AutoTokenizer.from_pretrained("google/canine-c")
         self.bert_tokenizer = AutoTokenizer.from_pretrained("readerbench/RoBERT-base")
+        
 
     def char_label2char(self, c, l):
         if c in self.chars_with_diacritics:
@@ -160,9 +161,11 @@ class PreprocessingUtils():
         bert_tokenized_input = self.bert_tokenizer.tokenize(input_text)
 
         bert_tokenized_input = [b.replace("#", '') for b in bert_tokenized_input]
+        
         token_idx = [[i] * len(tok) for i,tok in enumerate(bert_tokenized_input)]
         token_idx = [item for sublist in token_idx for item in sublist]
         bert_tokenized_input = [item for sublist in bert_tokenized_input for item in sublist]
+
 
         result = [-1] * len(input_text)
         curr_len = 0
